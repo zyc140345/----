@@ -4,7 +4,7 @@ Option Explicit
 Sub Main()
     Dim wsClient As WebSocketClient
     Dim filePath As String
-    Dim uploadSuccess As Boolean
+    Dim success As Boolean
     
     ' 创建 CWebSocketClient 实例
     Set wsClient = New WebSocketClient
@@ -18,12 +18,15 @@ Sub Main()
     wsClient.Initialize "10.37.129.2", 8080, "/ws/140345"
     
     ' 上传文件
-    uploadSuccess = wsClient.UploadFile(filePath)
+    Dim message As String
+    message = "Hello World!"
+    success = wsClient.SendMessage(message)
     
-    If uploadSuccess Then
-        MsgBox "文件上传成功！", vbInformation
+    If success Then
+        success = wsClient.UploadFile(filePath)
+        success = wsClient.DownloadFile("temp.xlsx")
     Else
-        MsgBox "文件上传失败。", vbCritical
+        MsgBox "发送失败。", vbCritical
     End If
     
     ' 关闭 WebSocket 连接

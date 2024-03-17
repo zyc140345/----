@@ -1,6 +1,6 @@
 VERSION 1.0 CLASS
 BEGIN
-    MultiUse = -1  'True
+  MultiUse = -1  'True
 END
 Attribute VB_Name = "WebSocketClient"
 Attribute VB_GlobalNameSpace = False
@@ -18,13 +18,13 @@ Private hSessionHandle As LongPtr
 Private hConnectionHandle As LongPtr
 Private hRequestHandle As LongPtr
 Private hWebSocketHandle As LongPtr
+Private dwError As Long
 Private ServerName As String
 Private Path As String
 Private Port As Long
 
 ' Initialize the WebSocket client
 Public Sub Initialize(Server As String, PortNumber As Long, ApiPath As String)
-    Dim dwError As Long
     Dim fStatus As Long
     Dim dwStatusCode As Long
     Dim sizeStatusCode As Long
@@ -129,7 +129,7 @@ Public Function SendMessage(message As String) As Boolean
     Dim cdwMessageLength As Long
     Dim dwError As Long
     
-    cdwMessageLength = Len(message)
+    cdwMessageLength = 2 * Len(message)
     
     ' Send message
     dwError = WinHttpWebSocketSend(hWebSocketHandle, _
@@ -139,7 +139,7 @@ Public Function SendMessage(message As String) As Boolean
     If dwError = ERROR_SUCCESS Then
         SendMessage = True
     Else
-        Me.dwError = GetLastError
+        dwError = GetLastError
         SendMessage = False
     End If
 End Function
@@ -148,31 +148,58 @@ End Function
 Public Function ReceiveMessage() As String
     Dim rgbBuffer(1023) As Byte
     Dim dwBufferLength As Long
+    ' get correct value in case of change to buffer size
+    dwBufferLength = (UBound(rgbBuffer) - LBound(rgbBuffer) + 1)
+    
+    Dim pbCurrentBufferPointer As LongPtr
+    pbCurrentBufferPointer = VarPtr(rgbBuffer(0))
     Dim dwBytesTransferred As Long
+    dwBytesTransferred = 0
     Dim eBufferType As Long
-    Dim strBuffer As String
-    Dim dwError As Long
+    eBufferType = 0
+    Dim dwCloseReasonLength As Long
+    dwCloseReasonLength = 0
+    Dim usStatus As Integer
+    usStatus = 0
     
-    dwBufferLength = UBound(rgbBuffer) - LBound(rgbBuffer) + 1
+    ' loop if we get a message fragment packet
+    ' added a failsafe counter to original code - probably unnecessary
+    Dim MessageComplete As Boolean, count As Long
+    MessageComplete = False
+    count = 0
+    Do Until (MessageComplete Or (count > 40))
+        If (dwBufferLength = 0) Then
+            dwError = ERROR_NOT_ENOUGH_MEMORY
+        End If
+        count = count + 1
+        Debug.Print "Check receive buffer: " & count
+        ' receive - will hang if no server response
+        dwError = WinHttpWebSocketReceive(hWebSocketHandle, rgbBuffer(0), dwBufferLength, VarPtr(dwBytesTransferred), VarPtr(eBufferType))
+        If (dwError <> ERROR_SUCCESS) Then
+            dwError = GetLastError
+        End If
+        ' If we receive just part of the message restart the receive operation.
+        pbCurrentBufferPointer = pbCurrentBufferPointer + dwBytesTransferred
+        dwBufferLength = dwBufferLength - dwBytesTransferred
+        If Not (eBufferType = WINHTTP_WEB_SOCKET_BINARY_FRAGMENT_BUFFER_TYPE) Then
+            MessageComplete = True
+        End If
+    Loop
     
-    ' Receive message
-    dwError = WinHttpWebSocketReceive(hWebSocketHandle, _
-                                      VarPtr(rgbBuffer(0)), dwBufferLength, _
-                                      dwBytesTransferred, eBufferType)
-                
-    If dwError = ERROR_SUCCESS Then
-        ' Convert buffer into string
-        Dim j As Long
-        For j = LBound(rgbBuffer) To UBound(rgbBuffer)
-            If rgbBuffer(j) <> 0 Then
-                strBuffer = strBuffer & Chr(rgbBuffer(j))
-            End If
-        Next j
-    Else
-        Me.dwError = GetLastError
-        strBuffer = ""
+    ' Expected server to just echo single binary message - complain if different
+    If (eBufferType <> WINHTTP_WEB_SOCKET_BINARY_MESSAGE_BUFFER_TYPE) Then
+        Debug.Print "Unexpected buffer type"
+        dwError = 87 ' ERROR_INVALID_PARAMETER
     End If
     
+    ' convert buffer into string (crudely, just ignore zeros)
+    Dim j As Long, strBuffer As String
+    strBuffer = ""
+    For j = LBound(rgbBuffer) To UBound(rgbBuffer)
+        If rgbBuffer(j) <> 0 Then
+            strBuffer = strBuffer & Chr(rgbBuffer(j))
+        End If
+    Next
     ReceiveMessage = strBuffer
 End Function
 
@@ -206,6 +233,49 @@ Public Function UploadFile(filePath As String) As Boolean
     
     ' Close the file
     Close #hFile
+End Function
+
+' Download a file through WebSocket
+Public Function DownloadFile(savePath As String) As Boolean
+    Dim dwError As Long
+    Dim hFile As Long
+    Dim buffer() As Byte
+    Dim totalBytes As Long
+    
+    ' Open file for writing
+    hFile = FreeFile
+    Open savePath For Binary Access Write As #hFile
+    
+    ' Receive total bytes field
+    ReDim buffer(3) ' Length field is 4 bytes
+    dwError = WinHttpWebSocketReceive(hWebSocketHandle, buffer(0), 4, 0, 0)
+    
+    If dwError <> ERROR_SUCCESS Then
+        dwError = GetLastError
+        DownloadFile = False
+        Close #hFile
+        Exit Function
+    End If
+    
+    ' Convert data length field to Long
+    totalBytes = buffer(0) + buffer(1) * 2 ^ 8 + buffer(2) * 2 ^ 16 + buffer(3) * 2 ^ 24
+    
+    ' Receive data
+    ReDim buffer(totalBytes - 1) ' Adjust buffer size as needed
+    dwError = WinHttpWebSocketReceive(hWebSocketHandle, buffer(0), UBound(buffer) + 1, 0, 0)
+    If dwError <> ERROR_SUCCESS Then
+        dwError = GetLastError
+        DownloadFile = False
+        Close #hFile
+        Exit Function
+    End If
+    
+    ' Write received data to the file
+    Put #hFile, , buffer
+    
+    ' Close file
+    Close #hFile
+    DownloadFile = True
 End Function
 
 ' Close WebSocket connection
