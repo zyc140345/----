@@ -2,6 +2,7 @@ Attribute VB_Name = "configure"
 
 Global departments As Variant
 Global cur_idx As Long
+Global websocket As WebSocketClient
 
 Sub begin_rating()
     ' 获取 sheet 对象
@@ -31,7 +32,7 @@ Sub begin_rating()
     Dim fs As Object
     Set fs = CreateObject("Scripting.FileSystemObject")
     Dim export_dir As String
-    export_dir = ThisWorkbook.Path & Application.PathSeparator & judge_name
+    export_dir = ThisWorkbook.path & Application.PathSeparator & judge_name
     If fs.FolderExists(export_dir) Then
         fs.DeleteFolder export_dir, True
     End If
@@ -47,6 +48,18 @@ Sub begin_rating()
     rate_next_btn.Caption = "下一个"
     rate_next_btn.Visible = True
     rate_prev_btn.Visible = False
+    
+    ' 建立 websocket 连接
+    Dim server_name As String
+    server_name = "10.37.129.2"
+    Dim port As Long
+    port = 8080
+    Dim path As String
+    path = "/ws/" & judge_name
+    Set websocket = New WebSocketClient
+    websocket.Initialize server_name, port, path
+    websocket.SendMessage "judge"
+    
     rating_table.Activate
 End Sub
 
@@ -54,11 +67,11 @@ Sub merge()
     Dim fs As Object
     Set fs = CreateObject("Scripting.FileSystemObject")
     Dim root_dir As String
-    root_dir = Workbooks(1).Path
+    root_dir = Workbooks(1).path
     
     ' 读取评委姓名
     Dim judges As Object
-    Set judges = fs.GetFolder(Workbooks(1).Path).SubFolders
+    Set judges = fs.GetFolder(Workbooks(1).path).SubFolders
     
     ' 读取单位名称
     Dim last_row As Long
@@ -98,7 +111,7 @@ Sub merge()
         Set cur_cell = col_begin.Offset(0, 0)
         For Each department In departments
             Dim rating_workboook_path As String
-            rating_workbook_path = judge.Path & Application.PathSeparator & department & ".xlsx"
+            rating_workbook_path = judge.path & Application.PathSeparator & department & ".xlsx"
             Dim rating_workbook As Workbook
             Set rating_workbook = Workbooks.Open(rating_workbook_path)
             Dim rating_sheet As Worksheet

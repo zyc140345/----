@@ -7,8 +7,17 @@ Sub rate_next()
     Set rate_next_btn = rating_table.Shapes("rate_next_btn").OLEFormat.Object
     Set rate_prev_btn = rating_table.Shapes("rate_prev_btn").OLEFormat.Object
     
-    verify_score rating_table
-    save_rating_table rating_table
+    ' 验证评分
+    Dim valid As Boolean
+    valid = verify_score(rating_table)
+    ' 缓存评分
+    Dim export_path As String
+    export_path = save_rating_table(rating_table)
+    ' 上传评分
+    If valid Then
+        websocket.SendMessage (departments(cur_idx))
+        websocket.UploadFile (export_path)
+    End If
     
     cur_idx = cur_idx + 1
     clear_score
@@ -24,7 +33,7 @@ Sub rate_next()
     ElseIf cur_idx > UBound(departments) Then  '完成所有单位的评价，重置评分表并弹窗提醒
         Dim export_dir As String
         export_dir = Split(rating_table.Range("E2").Value, "：")(1)
-        MsgBox "评分完成，请将 " & Workbooks(1).Path & Application.PathSeparator & export_dir & " 拷贝至评分汇总电脑！"
+        MsgBox "评分完成，请将 " & Workbooks(1).path & Application.PathSeparator & export_dir & " 拷贝至评分汇总电脑！"
         rate_next_btn.Visible = False
         rate_prev_btn.Visible = False
         rating_table.Range("A2").Value = "单位名称："
@@ -53,7 +62,7 @@ Sub rate_previous()
     End If
 End Sub
 
-Sub save_rating_table(rating_table As Worksheet)
+Function save_rating_table(rating_table As Worksheet) As String
     '构造新评价表
     Dim new_workbook As Workbook
     Set new_workbook = Workbooks.Add
@@ -69,20 +78,22 @@ Sub save_rating_table(rating_table As Worksheet)
     Dim export_dir As String
     export_dir = Split(rating_table.Range("E2").Value, "：")(1)
     Dim export_path As String
-    export_path = Workbooks(1).Path & Application.PathSeparator & export_dir & Application.PathSeparator & departments(cur_idx) & ".xlsx"
+    export_path = Workbooks(1).path & Application.PathSeparator & export_dir & Application.PathSeparator & departments(cur_idx) & ".xlsx"
     If fs.FileExists(export_path) Then
         fs.DeleteFile export_path
     End If
     new_workbook.SaveAs export_path
     new_workbook.Close SaveChanges:=False
-End Sub
+    
+    save_rating_table = export_path
+End Function
 
 Sub recover_old_scores(rating_table As Worksheet)
     '复原分数
     Dim workbook_dir As String
     workbook_dir = Split(rating_table.Range("E2").Value, "：")(1)
     Dim workbook_path As String
-    workbook_path = Workbooks(1).Path & Application.PathSeparator & workbook_dir & Application.PathSeparator & departments(cur_idx) & ".xlsx"
+    workbook_path = Workbooks(1).path & Application.PathSeparator & workbook_dir & Application.PathSeparator & departments(cur_idx) & ".xlsx"
 
     Dim fs As Object
     Set fs = CreateObject("Scripting.FileSystemObject")
@@ -111,7 +122,7 @@ Function verify_score(rating_table As Worksheet) As Boolean
     valid = True
     For Each cell In rating_table.Range(rating_table.Cells(4, col), rating_table.Cells(last_row, col))
         If cell.MergeArea.Cells(1, 1).Address = cell.Address Then
-            If IsEmpty(cell) Then
+            If IsEmpty(cell) Or cell.Value > rating_table.Cells(cell.Row, cell.column - 1).Value Then
                 cell.Interior.Color = RGB(255, 0, 0)
                 valid = False
             Else
@@ -120,7 +131,7 @@ Function verify_score(rating_table As Worksheet) As Boolean
         End If
     Next cell
     If Not valid Then
-        MsgBox "您有未完成的评分！", vbExclamation + vbOKOnly, "警告"
+        MsgBox "您有未完成的评分，或分数不合法！", vbExclamation + vbOKOnly, "警告"
     End If
     verify_score = valid
 End Function

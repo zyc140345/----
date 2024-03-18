@@ -20,8 +20,8 @@ Private hRequestHandle As LongPtr
 Private hWebSocketHandle As LongPtr
 Private dwError As Long
 Private ServerName As String
-Private Path As String
-Private Port As Long
+Private path As String
+Private port As Long
 
 ' Initialize the WebSocket client
 Public Sub Initialize(Server As String, PortNumber As Long, ApiPath As String)
@@ -33,8 +33,8 @@ Public Sub Initialize(Server As String, PortNumber As Long, ApiPath As String)
     fStatus = False
 
     ServerName = Server
-    Port = PortNumber
-    Path = ApiPath
+    port = PortNumber
+    path = ApiPath
     
     ' Create session handle
     hSessionHandle = WinHttpOpen(StrPtr("Websocket Sample"), _
@@ -47,7 +47,7 @@ Public Sub Initialize(Server As String, PortNumber As Long, ApiPath As String)
     ' Create connection handle
     hConnectionHandle = WinHttpConnect(hSessionHandle, _
                                        StrPtr(ServerName), _
-                                       Port, 0)
+                                       port, 0)
     If hConnectionHandle = 0 Then
         dwError = GetLastError
     End If
@@ -57,7 +57,7 @@ Public Sub Initialize(Server As String, PortNumber As Long, ApiPath As String)
     method = "GET" ' always
     
     ' Create request handle - use 0 for null pointer to empty strings: Version, Referrer, AcceptTypes
-    hRequestHandle = WinHttpOpenRequest(hConnectionHandle, StrPtr(method), StrPtr(Path), 0, 0, 0, 0)
+    hRequestHandle = WinHttpOpenRequest(hConnectionHandle, StrPtr(method), StrPtr(path), 0, 0, 0, 0)
     If hRequestHandle = 0 Then
         dwError = GetLastError
     End If
@@ -121,7 +121,7 @@ Public Sub Initialize(Server As String, PortNumber As Long, ApiPath As String)
     ' The request handle is not needed anymore. From now on we will use the websocket handle.
     WinHttpCloseHandle (hRequestHandle)
     hRequestHandle = 0
-    Debug.Print "Succesfully upgraded to websocket protocol at: " & ServerName & ":" & Port & Path
+    Debug.Print "Succesfully upgraded to websocket protocol at: " & ServerName & ":" & port & path
 End Sub
 
 ' Send a message through WebSocket
@@ -298,5 +298,7 @@ Public Sub CloseConnection()
         hSessionHandle = 0
     End If
 End Sub
+
+
 
 
