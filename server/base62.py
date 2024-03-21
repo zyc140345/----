@@ -1,5 +1,6 @@
 import base64
 
+# base62 编码不使用在 URL 中有特殊含义的 + 和 /，因此不需要进行 URL 编码
 
 def base62_encode(text: str) -> str:
     base64_bytes = base64.b64encode(text.encode('utf-8'))

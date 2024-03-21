@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" serverName="3090-server-lan" remoteFilesAllowedToDisappearOnAutoupload="false">
+    <serverData>
+      <paths name="3090-server-lan">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/zyc/workspace/python_projects/merge_rating" local="$PROJECT_DIR$/server" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+    </serverData>
+  </component>
+</project>
