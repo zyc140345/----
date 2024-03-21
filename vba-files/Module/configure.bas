@@ -46,12 +46,14 @@ Sub begin_rating()
     ' 初始化评价表
     rating_table.Range("E2").Value = "评委：" & judge_name
     rating_table.Range("A2").Value = "单位名称：" & departments(1)
-    rating.clear_score
-    Dim rate_next_btn As Button, rate_prev_btn As Button
+    rating.clear_score rating_table
+    Dim rate_next_btn As Button, rate_prev_btn As Button, random_rating_btn As Button
     Set rate_next_btn = rating_table.Shapes("rate_next_btn").OLEFormat.Object
     Set rate_prev_btn = rating_table.Shapes("rate_prev_btn").OLEFormat.Object
+    Set random_rating_btn = rating_table.Shapes("random_rating_btn").OLEFormat.Object
     rate_next_btn.Caption = "下一个"
     rate_next_btn.Visible = True
+    random_rating_btn.Visible = True
     rate_prev_btn.Visible = False
     
     ' 建立 websocket 连接
@@ -59,13 +61,26 @@ Sub begin_rating()
     path = "/ws/" & judge_name
     Set websocket = New WebSocketClient
     websocket.Initialize SERVER_NAME, PORT, path
+    If websocket.dwError <> ERROR_SUCCESS Then
+        GoTo web_error_handle
+    End If
     websocket.SendMessage "judge"
+    If websocket.dwError <> ERROR_SUCCESS Then
+        GoTo web_error_handle
+    End If
     
     rating_table.Activate
+    Exit Sub
+    
+web_error_handle:
+    websocket.CloseConnection
+    MsgBox "网络异常！错误：" & websocket.dwError
 End Sub
 
 Sub begin_merge()
     ' 读取单位名称
+    Dim config As Worksheet
+    Set config = ThisWorkbook.Worksheets("配置")
     Dim last_row As Long
     last_row = find_last_row(config.Columns("A"))
     departments = Application.Transpose(config.Range("A2:A" & last_row).Value)
@@ -73,6 +88,8 @@ Sub begin_merge()
     ' 初始化汇总表
     Dim merge_table As Worksheet
     Set merge_table = ThisWorkbook.Worksheets("汇总表")
+    merge_table.Cells.ClearContents
+    merge_table.Cells.ClearFormats
     merge_table.Range("A1").Value = "序号"
     merge_table.Range("B1").Value = "单位名称"
     Dim cur_cell As Range
@@ -94,11 +111,25 @@ Sub begin_merge()
     path = "/ws/" & "merger"
     Set websocket = New WebSocketClient
     websocket.Initialize SERVER_NAME, PORT, path
+    If websocket.dwError <> ERROR_SUCCESS Then
+        GoTo web_error_handle
+    End If
     websocket.SendMessage "merger"
+    If websocket.dwError <> ERROR_SUCCESS Then
+        GoTo web_error_handle
+    End If
     
+    Dim finish_merge_btn As Button
+    Set finish_merge_btn = merge_table.Shapes("finish_merge_btn").OLEFormat.Object
+    finish_merge_btn.Visible = True
     scheduler
     
     merge_table.Activate
+    Exit Sub
+    
+web_error_handle:
+    websocket.CloseConnection
+    MsgBox "网络异常！错误：" & websocket.dwError
 End Sub
 
 Function find_last_row(column As Range) As Long

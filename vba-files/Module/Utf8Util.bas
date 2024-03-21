@@ -100,6 +100,6 @@ Public Function Utf8BytesToString(abUtf8Array() As Byte) As String
     ' Dimension output buffer to receive string
     strOut = String(nChars, 0)
     nChars = MultiByteToWideChar(CP_UTF8, 0&, VarPtr(abUtf8Array(0)), nBytes, StrPtr(strOut), nChars)
-    Utf8BytesToString = Left$(strOut, nChars)
+    Utf8BytesToString = left$(strOut, nChars)
 End Function
 

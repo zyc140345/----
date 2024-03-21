@@ -18,7 +18,7 @@ Private hSessionHandle As LongPtr
 Private hConnectionHandle As LongPtr
 Private hRequestHandle As LongPtr
 Private hWebSocketHandle As LongPtr
-Private dwError As Long
+Public dwError As Long
 Private bytesRead As Long
 Private ServerName As String
 Private path As String
@@ -77,8 +77,8 @@ Public Sub Initialize(Server As String, PortNumber As Long, ApiPath As String)
     HeaderText = HeaderText & "Sec-WebSocket-Version: 13" & vbCrLf  ' 8 or 13, may be redundant or unnecessary
     HeaderText = HeaderText & "Sec-Websocket-Protocol: echo-protocol" & vbCrLf  ' subprotocol
     ' setup for API call, trim any trailing vbCrLf
-    If (Right(HeaderText, 2) = vbCrLf) Then
-        HeaderText = Left(HeaderText, Len(HeaderText) - 2)
+    If (right(HeaderText, 2) = vbCrLf) Then
+        HeaderText = left(HeaderText, Len(HeaderText) - 2)
     End If
     
     If Len(HeaderText) > 0 Then ' let the API figure it out
@@ -128,7 +128,6 @@ End Sub
 ' Send a message through WebSocket
 Public Function SendMessage(message As String) As Boolean
     Dim cdwMessageLength As Long
-    Dim dwError As Long
     
     cdwMessageLength = 2 * Len(message)
     
@@ -147,7 +146,6 @@ End Function
 
 ' Receive a message through WebSocket
 Public Function ReceiveMessage() As String
-    Dim dwError As Long
     Dim hFile As Long
     Dim buffer() As Byte
     Dim totalBytes As Long
@@ -178,7 +176,6 @@ End Function
 
 ' Upload a file through WebSocket
 Public Function UploadFile(filePath As String) As Boolean
-    Dim dwError As Long
     Dim hFile As Long
     Dim fileSize As Long
     Dim buffer() As Byte
@@ -210,7 +207,6 @@ End Function
 
 ' Download a file through WebSocket
 Public Function DownloadFile(savePath As String) As Boolean
-    Dim dwError As Long
     Dim hFile As Long
     Dim buffer() As Byte
     Dim totalBytes As Long
@@ -256,7 +252,7 @@ Public Function DownloadFile(savePath As String) As Boolean
             Exit Function
         End If
         
-        ' 将块直接写入文件
+        ' Write the chunk into file
         Put #hFile, , buffer
         
         ' Update the position
@@ -274,6 +270,8 @@ Public Function DownloadFileHTTP(webPath, savePath As String) As Boolean
     Dim objXmlHttpReq As Object
     Dim objStream As Object
     
+    dwError = ERROR_SUCCESS
+    
     FileUrl = "http://" & SERVER_NAME & ":" & PORT & "/" & webPath
     Set objXmlHttpReq = CreateObject("Microsoft.XMLHTTP")
     objXmlHttpReq.Open "GET", FileUrl, False
@@ -289,6 +287,7 @@ Public Function DownloadFileHTTP(webPath, savePath As String) As Boolean
         DownloadFileHTTP = True
     Else
         DownloadFileHTTP = False
+        dwError = objXmlHttpReq.Status
     End If
 End Function
 
@@ -313,7 +312,37 @@ Public Sub CloseConnection()
     End If
 End Sub
 
+Public Function URLEncode( _
+   StringVal As String, _
+   Optional SpaceAsPlus As Boolean = False _
+) As String
 
+  Dim StringLen As Long: StringLen = Len(StringVal)
+
+  If StringLen > 0 Then
+    ReDim result(StringLen) As String
+    Dim i As Long, CharCode As Integer
+    Dim Char As String, Space As String
+
+    If SpaceAsPlus Then Space = "+" Else Space = "%20"
+
+    For i = 1 To StringLen
+      Char = Mid$(StringVal, i, 1)
+      CharCode = Asc(Char)
+      Select Case CharCode
+        Case 97 To 122, 65 To 90, 48 To 57, 45, 46, 95, 126
+          result(i) = Char
+        Case 32
+          result(i) = Space
+        Case 0 To 15
+          result(i) = "%0" & Hex(CharCode)
+        Case Else
+          result(i) = "%" & Hex(CharCode)
+      End Select
+    Next i
+    URLEncode = Join(result, "")
+  End If
+End Function
 
 
 
