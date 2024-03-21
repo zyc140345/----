@@ -49,7 +49,7 @@ Public errorTitle As String
 '*/
 Public vbaDebugPrintActive As Boolean
 
-Private Sub class_initialize()
+Private Sub Class_Initialize()
 
      Dim fso  As Object
      Set fso = CreateObject("Scripting.FileSystemObject")
@@ -105,16 +105,16 @@ End Function
 Private Function writeDebugFileContent(messageText, messageType)
 
      Dim filePath As String
-     Dim FileNum As Integer
+     Dim fileNum As Integer
      Dim PREFIX As String
 
      filePath = DEBUG_FILE_PATH
 
-     FileNum = FreeFile
+     fileNum = FreeFile
 
      PREFIX = Now & " - "
 
-     Open filePath For Append As #FileNum
+     Open filePath For Append As #fileNum
 
      Dim debugMessage As String
      Select Case messageType
@@ -129,9 +129,9 @@ Private Function writeDebugFileContent(messageText, messageType)
           debugMessage = PREFIX & "Info:" & messageText
      End Select
 
-     Print #FileNum, debugMessage
+     Print #fileNum, debugMessage
 
-     Close #FileNum
+     Close #fileNum
 
      If (vbaDebugPrintActive) Then
 
@@ -214,7 +214,7 @@ End Function
 
 
 Private Function ErrorHanddler() As String
-     Dim errorDescription As String
+     Dim ErrorDescription As String
      Dim numberDescription As String
      Dim lineError As String
      Dim sourceError As String
@@ -229,13 +229,13 @@ Private Function ErrorHanddler() As String
       Case 11
           numberDescription = vbCrLf & MESSAGE_SPACE & "Error Number: " & Err.Number
           lineError = vbCrLf & MESSAGE_SPACE & "Error Line: " & Erl
-          errorDescription = vbCrLf & MESSAGE_SPACE & "Error Description: " & Err.Description
+          ErrorDescription = vbCrLf & MESSAGE_SPACE & "Error Description: " & Err.Description
       Case Else
           numberDescription = vbCrLf & MESSAGE_SPACE & "Error Number: " & Err.Number
-          errorDescription = vbCrLf & MESSAGE_SPACE & "Error Description: " & Err.Description
+          ErrorDescription = vbCrLf & MESSAGE_SPACE & "Error Description: " & Err.Description
      End Select
 
 
-     ErrorHanddler = errorTitleMsg & lineError & errorSourceMsg & numberDescription & errorDescription
+     ErrorHanddler = errorTitleMsg & lineError & errorSourceMsg & numberDescription & ErrorDescription
 
 End Function

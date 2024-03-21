@@ -1,8 +1,9 @@
 Attribute VB_Name = "rating"
+Option Explicit
 
 Sub rate_next()
     Dim rating_table As Worksheet
-    Set rating_table = Workbooks(1).Worksheets("评价表")
+    Set rating_table = ThisWorkbook.Worksheets("评价表")
     Dim rate_next_btn As Button, rate_prev_btn As Button
     Set rate_next_btn = rating_table.Shapes("rate_next_btn").OLEFormat.Object
     Set rate_prev_btn = rating_table.Shapes("rate_prev_btn").OLEFormat.Object
@@ -15,8 +16,10 @@ Sub rate_next()
     export_path = save_rating_table(rating_table)
     ' 上传评分
     If valid Then
-        websocket.SendMessage (departments(cur_idx))
-        websocket.UploadFile (export_path)
+        Dim department As String
+        department = departments(cur_idx)
+        websocket.SendMessage department
+        websocket.UploadFile export_path
     End If
     
     cur_idx = cur_idx + 1
@@ -33,7 +36,7 @@ Sub rate_next()
     ElseIf cur_idx > UBound(departments) Then  '完成所有单位的评价，重置评分表并弹窗提醒
         Dim export_dir As String
         export_dir = Split(rating_table.Range("E2").Value, "：")(1)
-        MsgBox "评分完成，请将 " & Workbooks(1).path & Application.PathSeparator & export_dir & " 拷贝至评分汇总电脑！"
+        MsgBox "评分完成，请将 " & ThisWorkbook.path & Application.PathSeparator & export_dir & " 拷贝至评分汇总电脑！"
         rate_next_btn.Visible = False
         rate_prev_btn.Visible = False
         rating_table.Range("A2").Value = "单位名称："
@@ -43,7 +46,7 @@ End Sub
 
 Sub rate_previous()
     Dim rating_table As Worksheet
-    Set rating_table = Workbooks(1).Worksheets("评价表")
+    Set rating_table = ThisWorkbook.Worksheets("评价表")
     Dim rate_next_btn As Button, rate_prev_btn As Button
     Set rate_next_btn = rating_table.Shapes("rate_next_btn").OLEFormat.Object
     Set rate_prev_btn = rating_table.Shapes("rate_prev_btn").OLEFormat.Object
@@ -78,7 +81,7 @@ Function save_rating_table(rating_table As Worksheet) As String
     Dim export_dir As String
     export_dir = Split(rating_table.Range("E2").Value, "：")(1)
     Dim export_path As String
-    export_path = Workbooks(1).path & Application.PathSeparator & export_dir & Application.PathSeparator & departments(cur_idx) & ".xlsx"
+    export_path = ThisWorkbook.path & Application.PathSeparator & export_dir & Application.PathSeparator & departments(cur_idx) & ".xlsx"
     If fs.FileExists(export_path) Then
         fs.DeleteFile export_path
     End If
@@ -93,7 +96,7 @@ Sub recover_old_scores(rating_table As Worksheet)
     Dim workbook_dir As String
     workbook_dir = Split(rating_table.Range("E2").Value, "：")(1)
     Dim workbook_path As String
-    workbook_path = Workbooks(1).path & Application.PathSeparator & workbook_dir & Application.PathSeparator & departments(cur_idx) & ".xlsx"
+    workbook_path = ThisWorkbook.path & Application.PathSeparator & workbook_dir & Application.PathSeparator & departments(cur_idx) & ".xlsx"
 
     Dim fs As Object
     Set fs = CreateObject("Scripting.FileSystemObject")
@@ -102,7 +105,9 @@ Sub recover_old_scores(rating_table As Worksheet)
         Set old_rating_workbook = Workbooks.Open(workbook_path)
         Dim old_rating_table As Worksheet
         Set old_rating_table = old_rating_workbook.Worksheets(1)
+        Dim last_row As Long
         last_row = Application.Match("总分", rating_table.Columns("A"), 0) - 1
+        Dim col As Long
         col = Application.Match("考评组评分", rating_table.Rows("3"), 0)
         Dim src_range As Range, dst_range As Range
         Set src_range = old_rating_table.Range(old_rating_table.Cells(4, col), old_rating_table.Cells(last_row, col))
@@ -120,6 +125,7 @@ Function verify_score(rating_table As Worksheet) As Boolean
     col = Application.Match("考评组评分", rating_table.Rows("3"), 0)
     Dim valid As Boolean
     valid = True
+    Dim cell As Variant
     For Each cell In rating_table.Range(rating_table.Cells(4, col), rating_table.Cells(last_row, col))
         If cell.MergeArea.Cells(1, 1).Address = cell.Address Then
             If IsEmpty(cell) Or cell.Value > rating_table.Cells(cell.Row, cell.column - 1).Value Then
@@ -139,7 +145,7 @@ End Function
 Function clear_score()
     '清空评价表
     Dim rating_table As Worksheet
-    Set rating_table = Workbooks(1).Worksheets("评价表")
+    Set rating_table = ThisWorkbook.Worksheets("评价表")
     Dim last_row As Long, col As Long
     last_row = Application.Match("总分", rating_table.Columns("A"), 0) - 1
     col = Application.Match("考评组评分", rating_table.Rows("3"), 0)

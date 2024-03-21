@@ -1,22 +1,21 @@
 Attribute VB_Name = "configure"
+Option Explicit
 
-Global departments As Variant
-Global cur_idx As Long
-Global websocket As WebSocketClient
+Public departments As Variant
+Public cur_idx As Long
+
+Public Const SERVER_NAME = "10.11.154.117"
+Public Const PORT = 5422
+Public websocket As WebSocketClient
+
 
 Sub begin_rating()
     ' 获取 sheet 对象
     Dim config As Worksheet
-    Set config = Workbooks(1).Worksheets("配置")
+    Set config = ThisWorkbook.Worksheets("配置")
     Dim rating_table As Worksheet
-    Set rating_table = Workbooks(1).Worksheets("评价表")
+    Set rating_table = ThisWorkbook.Worksheets("评价表")
 
-    ' 读取单位名称
-    Dim last_row As Long
-    last_row = find_last_row(config.Columns("A"))
-    departments = Application.Transpose(config.Range("A2:A" & last_row).Value)
-    cur_idx = 1
-    
     ' 弹出输入框，提示评委输入姓名
     Dim judge_name As String
     Do While True
@@ -27,6 +26,12 @@ Sub begin_rating()
             Exit Do
         End If
     Loop
+
+    ' 读取单位名称
+    Dim last_row As Long
+    last_row = find_last_row(config.Columns("A"))
+    departments = Application.Transpose(config.Range("A2:A" & last_row).Value)
+    cur_idx = 1
     
     ' 创建输出目录
     Dim fs As Object
@@ -50,39 +55,24 @@ Sub begin_rating()
     rate_prev_btn.Visible = False
     
     ' 建立 websocket 连接
-    Dim server_name As String
-    server_name = "10.37.129.2"
-    Dim port As Long
-    port = 8080
     Dim path As String
     path = "/ws/" & judge_name
     Set websocket = New WebSocketClient
-    websocket.Initialize server_name, port, path
+    websocket.Initialize SERVER_NAME, PORT, path
     websocket.SendMessage "judge"
     
     rating_table.Activate
 End Sub
 
-Sub merge()
-    Dim fs As Object
-    Set fs = CreateObject("Scripting.FileSystemObject")
-    Dim root_dir As String
-    root_dir = Workbooks(1).path
-    
-    ' 读取评委姓名
-    Dim judges As Object
-    Set judges = fs.GetFolder(Workbooks(1).path).SubFolders
-    
+Sub begin_merge()
     ' 读取单位名称
     Dim last_row As Long
     last_row = find_last_row(config.Columns("A"))
     departments = Application.Transpose(config.Range("A2:A" & last_row).Value)
     
-    '创建并初始化汇总表
-    Dim merge_workbook As Workbook
-    Set merge_workbook = Workbooks.Add
+    ' 初始化汇总表
     Dim merge_table As Worksheet
-    Set merge_table = merge_workbook.Sheets("Sheet1")
+    Set merge_table = ThisWorkbook.Worksheets("汇总表")
     merge_table.Range("A1").Value = "序号"
     merge_table.Range("B1").Value = "单位名称"
     Dim cur_cell As Range
@@ -93,57 +83,22 @@ Sub merge()
         Set cur_cell = cur_cell.Offset(1, 0)
     Next i
     Set cur_cell = merge_table.Range("B2")
+    Dim department As Variant
     For Each department In departments
         cur_cell.Value = department
         Set cur_cell = cur_cell.Offset(1, 0)
     Next department
-    Set cur_cell = merge_table.Range("C1")
-    For Each judge In judges
-        cur_cell.Value = judge.Name
-        Set cur_cell = cur_cell.Offset(0, 1)
-    Next judge
-    cur_cell.Value = "平均分"
     
-    '将各评委对各单位的评分填入汇总表
-    Dim col_begin As Range
-    Set col_begin = merge_table.Range("C2")
-    For Each judge In judges
-        Set cur_cell = col_begin.Offset(0, 0)
-        For Each department In departments
-            Dim rating_workboook_path As String
-            rating_workbook_path = judge.path & Application.PathSeparator & department & ".xlsx"
-            Dim rating_workbook As Workbook
-            Set rating_workbook = Workbooks.Open(rating_workbook_path)
-            Dim rating_sheet As Worksheet
-            Set rating_sheet = rating_workbook.Worksheets(1)
-            Dim score_row As Long
-            score_row = Application.Match("总分", rating_sheet.Columns("A"), 0)
-            score_col = Application.Match("考评组评分", rating_sheet.Rows("3"), 0)
-            cur_cell.Value = rating_sheet.Cells(score_row, score_col).Value
-            Set cur_cell = cur_cell.Offset(1, 0)
-            rating_workbook.Close SaveChanges:=False
-        Next department
-        Set col_begin = col_begin.Offset(0, 1)
-    Next judge
+    ' 建立 websocket 连接
+    Dim path As String
+    path = "/ws/" & "merger"
+    Set websocket = New WebSocketClient
+    websocket.Initialize SERVER_NAME, PORT, path
+    websocket.SendMessage "merger"
     
-    '计算各单位的平均分
-    Set cur_cell = col_begin.Offset(0, 0)
-    For Each department In departments
-        Dim score_range As Range
-        Set score_range = merge_table.Range(merge_table.Cells(cur_cell.Row, 2), cur_cell.Offset(0, -1))
-        cur_cell.Value = Application.WorksheetFunction.Average(score_range)
-        Set cur_cell = cur_cell.Offset(1, 0)
-    Next department
+    scheduler
     
-    '导出汇总表
-    Dim export_path As String
-    export_path = root_dir & Application.PathSeparator & "汇总表.xlsx"
-    If fs.FileExists(export_path) Then
-        fs.DeleteFile export_path
-    End If
-    merge_workbook.SaveAs export_path
-    merge_workbook.Close SaveChanges:=False
-    MsgBox "汇总成功！汇总表已保存至：" & export_path
+    merge_table.Activate
 End Sub
 
 Function find_last_row(column As Range) As Long

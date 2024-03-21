@@ -19,9 +19,10 @@ Private hConnectionHandle As LongPtr
 Private hRequestHandle As LongPtr
 Private hWebSocketHandle As LongPtr
 Private dwError As Long
+Private bytesRead As Long
 Private ServerName As String
 Private path As String
-Private port As Long
+Private PORT As Long
 
 ' Initialize the WebSocket client
 Public Sub Initialize(Server As String, PortNumber As Long, ApiPath As String)
@@ -33,7 +34,7 @@ Public Sub Initialize(Server As String, PortNumber As Long, ApiPath As String)
     fStatus = False
 
     ServerName = Server
-    port = PortNumber
+    PORT = PortNumber
     path = ApiPath
     
     ' Create session handle
@@ -47,7 +48,7 @@ Public Sub Initialize(Server As String, PortNumber As Long, ApiPath As String)
     ' Create connection handle
     hConnectionHandle = WinHttpConnect(hSessionHandle, _
                                        StrPtr(ServerName), _
-                                       port, 0)
+                                       PORT, 0)
     If hConnectionHandle = 0 Then
         dwError = GetLastError
     End If
@@ -121,7 +122,7 @@ Public Sub Initialize(Server As String, PortNumber As Long, ApiPath As String)
     ' The request handle is not needed anymore. From now on we will use the websocket handle.
     WinHttpCloseHandle (hRequestHandle)
     hRequestHandle = 0
-    Debug.Print "Succesfully upgraded to websocket protocol at: " & ServerName & ":" & port & path
+    Debug.Print "Succesfully upgraded to websocket protocol at: " & ServerName & ":" & PORT & path
 End Sub
 
 ' Send a message through WebSocket
@@ -146,61 +147,33 @@ End Function
 
 ' Receive a message through WebSocket
 Public Function ReceiveMessage() As String
-    Dim rgbBuffer(1023) As Byte
-    Dim dwBufferLength As Long
-    ' get correct value in case of change to buffer size
-    dwBufferLength = (UBound(rgbBuffer) - LBound(rgbBuffer) + 1)
+    Dim dwError As Long
+    Dim hFile As Long
+    Dim buffer() As Byte
+    Dim totalBytes As Long
     
-    Dim pbCurrentBufferPointer As LongPtr
-    pbCurrentBufferPointer = VarPtr(rgbBuffer(0))
-    Dim dwBytesTransferred As Long
-    dwBytesTransferred = 0
-    Dim eBufferType As Long
-    eBufferType = 0
-    Dim dwCloseReasonLength As Long
-    dwCloseReasonLength = 0
-    Dim usStatus As Integer
-    usStatus = 0
+    ' Receive total bytes field
+    ReDim buffer(3) ' Length field is 4 bytes
+    dwError = WinHttpWebSocketReceive(hWebSocketHandle, buffer(0), 4, 0, 0)
     
-    ' loop if we get a message fragment packet
-    ' added a failsafe counter to original code - probably unnecessary
-    Dim MessageComplete As Boolean, count As Long
-    MessageComplete = False
-    count = 0
-    Do Until (MessageComplete Or (count > 40))
-        If (dwBufferLength = 0) Then
-            dwError = ERROR_NOT_ENOUGH_MEMORY
-        End If
-        count = count + 1
-        Debug.Print "Check receive buffer: " & count
-        ' receive - will hang if no server response
-        dwError = WinHttpWebSocketReceive(hWebSocketHandle, rgbBuffer(0), dwBufferLength, VarPtr(dwBytesTransferred), VarPtr(eBufferType))
-        If (dwError <> ERROR_SUCCESS) Then
-            dwError = GetLastError
-        End If
-        ' If we receive just part of the message restart the receive operation.
-        pbCurrentBufferPointer = pbCurrentBufferPointer + dwBytesTransferred
-        dwBufferLength = dwBufferLength - dwBytesTransferred
-        If Not (eBufferType = WINHTTP_WEB_SOCKET_BINARY_FRAGMENT_BUFFER_TYPE) Then
-            MessageComplete = True
-        End If
-    Loop
+    If dwError <> ERROR_SUCCESS Then
+        dwError = GetLastError
+        Exit Function
+    End If
     
-    ' Expected server to just echo single binary message - complain if different
-    If (eBufferType <> WINHTTP_WEB_SOCKET_BINARY_MESSAGE_BUFFER_TYPE) Then
-        Debug.Print "Unexpected buffer type"
-        dwError = 87 ' ERROR_INVALID_PARAMETER
+    ' Convert data length field to Long
+    totalBytes = buffer(0) + buffer(1) * 2 ^ 8 + buffer(2) * 2 ^ 16 + buffer(3) * 2 ^ 24
+    
+    ' Receive data
+    ReDim buffer(totalBytes - 1) ' Adjust buffer size as needed
+    dwError = WinHttpWebSocketReceive(hWebSocketHandle, buffer(0), UBound(buffer) + 1, 0, 0)
+    If dwError <> ERROR_SUCCESS Then
+        dwError = GetLastError
+        Exit Function
     End If
     
     ' convert buffer into string (crudely, just ignore zeros)
-    Dim j As Long, strBuffer As String
-    strBuffer = ""
-    For j = LBound(rgbBuffer) To UBound(rgbBuffer)
-        If rgbBuffer(j) <> 0 Then
-            strBuffer = strBuffer & Chr(rgbBuffer(j))
-        End If
-    Next
-    ReceiveMessage = strBuffer
+    ReceiveMessage = Utf8BytesToString(buffer)
 End Function
 
 ' Upload a file through WebSocket
@@ -241,6 +214,11 @@ Public Function DownloadFile(savePath As String) As Boolean
     Dim hFile As Long
     Dim buffer() As Byte
     Dim totalBytes As Long
+    Dim position As Long
+    Dim chunkSize As Long
+    
+    ' Initialize chunk size
+    chunkSize = 1024 ' bytes
     
     ' Open file for writing
     hFile = FreeFile
@@ -260,22 +238,58 @@ Public Function DownloadFile(savePath As String) As Boolean
     ' Convert data length field to Long
     totalBytes = buffer(0) + buffer(1) * 2 ^ 8 + buffer(2) * 2 ^ 16 + buffer(3) * 2 ^ 24
     
-    ' Receive data
-    ReDim buffer(totalBytes - 1) ' Adjust buffer size as needed
-    dwError = WinHttpWebSocketReceive(hWebSocketHandle, buffer(0), UBound(buffer) + 1, 0, 0)
-    If dwError <> ERROR_SUCCESS Then
-        dwError = GetLastError
-        DownloadFile = False
-        Close #hFile
-        Exit Function
-    End If
-    
-    ' Write received data to the file
-    Put #hFile, , buffer
+    ' Receive data in chunks
+    position = 0 ' Start at the beginning of the message buffer
+    Do While position < totalBytes
+        ' Determine the size of the next chunk
+        If totalBytes - position < chunkSize Then
+            chunkSize = totalBytes - position
+        End If
+        
+        ' Resize the buffer for the chunk
+        ReDim buffer(chunkSize - 1)
+        
+        ' Receive a chunk of data
+        dwError = WinHttpWebSocketReceive(hWebSocketHandle, buffer(0), chunkSize, bytesRead, 0)
+        If dwError <> ERROR_SUCCESS Then
+            dwError = GetLastError
+            Exit Function
+        End If
+        
+        ' 将块直接写入文件
+        Put #hFile, , buffer
+        
+        ' Update the position
+        position = position + bytesRead
+    Loop
     
     ' Close file
     Close #hFile
     DownloadFile = True
+End Function
+
+' Download a file through HTTP
+Public Function DownloadFileHTTP(webPath, savePath As String) As Boolean
+    Dim FileUrl As String
+    Dim objXmlHttpReq As Object
+    Dim objStream As Object
+    
+    FileUrl = "http://" & SERVER_NAME & ":" & PORT & "/" & webPath
+    Set objXmlHttpReq = CreateObject("Microsoft.XMLHTTP")
+    objXmlHttpReq.Open "GET", FileUrl, False
+    objXmlHttpReq.Send
+    
+    If objXmlHttpReq.Status = 200 Then
+        Set objStream = CreateObject("ADODB.Stream")
+        objStream.Open
+        objStream.Type = 1
+        objStream.Write objXmlHttpReq.ResponseBody
+        objStream.SaveToFile savePath, 2
+        objStream.Close
+        DownloadFileHTTP = True
+    Else
+        DownloadFileHTTP = False
+    End If
 End Function
 
 ' Close WebSocket connection
@@ -298,6 +312,8 @@ Public Sub CloseConnection()
         hSessionHandle = 0
     End If
 End Sub
+
+
 
 
 
