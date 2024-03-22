@@ -72,97 +72,97 @@ Public Const WINHTTP_WEB_SOCKET_SECURE_HANDSHAKE_ERROR_CLOSE_STATUS = 1015
 Declare PtrSafe Function GetLastError Lib "kernel32" () As Long
 
 Public Declare PtrSafe Function WinHttpOpen Lib "winhttp" ( _
-   ByVal pszAgentW As LongPtr, _
-   ByVal dwAccessType As Long, _
-   ByVal pszProxyW As LongPtr, _
-   ByVal pszProxyBypassW As LongPtr, _
-   ByVal dwFlags As Long _
-   ) As LongPtr
+    ByVal pszAgentW As LongPtr, _
+    ByVal dwAccessType As Long, _
+    ByVal pszProxyW As LongPtr, _
+    ByVal pszProxyBypassW As LongPtr, _
+    ByVal dwFlags As Long _
+) As LongPtr
 
 Public Declare PtrSafe Function WinHttpConnect Lib "winhttp" ( _
-   ByVal hSession As LongPtr, _
-   ByVal pswzServerName As LongPtr, _
-   ByVal nServerPort As Long, _
-   ByVal dwReserved As Long _
-   ) As LongPtr
+    ByVal hSession As LongPtr, _
+    ByVal pswzServerName As LongPtr, _
+    ByVal nServerPort As Long, _
+    ByVal dwReserved As Long _
+) As LongPtr
 
 Public Declare PtrSafe Function WinHttpOpenRequest Lib "winhttp" ( _
-   ByVal hConnect As LongPtr, _
-   ByVal pwszVerb As LongPtr, _
-   ByVal pwszObjectName As LongPtr, _
-   ByVal pwszVersion As LongPtr, _
-   ByVal pwszReferrer As LongPtr, _
-   ByVal ppwszAcceptTypes As LongPtr, _
-   ByVal dwFlags As Long _
-   ) As LongPtr
+    ByVal hConnect As LongPtr, _
+    ByVal pwszVerb As LongPtr, _
+    ByVal pwszObjectName As LongPtr, _
+    ByVal pwszVersion As LongPtr, _
+    ByVal pwszReferrer As LongPtr, _
+    ByVal ppwszAcceptTypes As LongPtr, _
+    ByVal dwFlags As Long _
+) As LongPtr
 
 Public Declare PtrSafe Function WinHttpSetOption Lib "winhttp" ( _
-   ByVal hInternet As LongPtr, _
-   ByVal dwOption As Long, _
-   ByVal lpBuffer As LongPtr, _
-   ByVal dwBufferLength As Long _
-   ) As Long
+    ByVal hInternet As LongPtr, _
+    ByVal dwOption As Long, _
+    ByVal lpBuffer As LongPtr, _
+    ByVal dwBufferLength As Long _
+) As Long
 
 Public Declare PtrSafe Function WinHttpSendRequest Lib "winhttp" ( _
-   ByVal hRequest As LongPtr, _
-   ByVal lpszHeaders As LongPtr, _
-   ByVal dwHeadersLength As Long, _
-   ByVal lpOptional As LongPtr, _
-   ByVal dwOptionalLength As Long, _
-   ByVal dwTotalLength As Long, _
-   ByVal dwContext As Long _
-   ) As Long
+    ByVal hRequest As LongPtr, _
+    ByVal lpszHeaders As LongPtr, _
+    ByVal dwHeadersLength As Long, _
+    ByVal lpOptional As LongPtr, _
+    ByVal dwOptionalLength As Long, _
+    ByVal dwTotalLength As Long, _
+    ByVal dwContext As Long _
+) As Long
 
 Public Declare PtrSafe Function WinHttpReceiveResponse Lib "winhttp" ( _
-   ByVal hRequest As LongPtr, _
-   ByVal lpReserved As LongPtr _
-   ) As Long
+    ByVal hRequest As LongPtr, _
+    ByVal lpReserved As LongPtr _
+) As Long
 
 Public Declare PtrSafe Function WinHttpWebSocketCompleteUpgrade Lib "winhttp" ( _
-   ByVal hRequest As LongPtr, _
-   ByVal pContext As LongPtr _
-   ) As LongPtr
+    ByVal hRequest As LongPtr, _
+    ByVal pContext As LongPtr _
+) As LongPtr
 
 Public Declare PtrSafe Function WinHttpCloseHandle Lib "winhttp" ( _
-   ByVal hRequest As LongPtr _
-   ) As Long
+    ByVal hRequest As LongPtr _
+) As Long
 
 Public Declare PtrSafe Function WinHttpWebSocketSend Lib "winhttp" ( _
-   ByVal hWebSocket As LongPtr, _
-   ByVal eBufferType As Long, _
-   ByVal pvBuffer As LongPtr, _
-   ByVal dwBufferLength As Long _
-   ) As Long
+    ByVal hWebSocket As LongPtr, _
+    ByVal eBufferType As Long, _
+    ByVal pvBuffer As LongPtr, _
+    ByVal dwBufferLength As Long _
+) As Long
 
 Public Declare PtrSafe Function WinHttpWebSocketReceive Lib "winhttp" ( _
-   ByVal hWebSocket As LongPtr, _
-   ByRef pvBuffer As Any, _
-   ByVal dwBufferLength As Long, _
-   ByRef pdwBytesRead As LongPtr, _
-   ByRef peBufferType As LongPtr _
-   ) As Long
+    ByVal hWebSocket As LongPtr, _
+    ByRef pvBuffer As Any, _
+    ByVal dwBufferLength As Long, _
+    ByRef pdwBytesRead As LongPtr, _
+    ByRef peBufferType As LongPtr _
+) As Long
 
 Public Declare PtrSafe Function WinHttpWebSocketClose Lib "winhttp" ( _
-   ByVal hWebSocket As LongPtr, _
-   ByVal usStatus As Integer, _
-   ByVal pvReason As LongPtr, _
-   ByVal dwReasonLength As Long _
-   ) As Long
+    ByVal hWebSocket As LongPtr, _
+    ByVal usStatus As Integer, _
+    ByVal pvReason As LongPtr, _
+    ByVal dwReasonLength As Long _
+) As Long
 
 Public Declare PtrSafe Function WinHttpWebSocketQueryCloseStatus Lib "winhttp" ( _
-   ByVal hWebSocket As LongPtr, _
-   ByRef usStatus As Integer, _
-   ByRef pvReason As Any, _
-   ByVal dwReasonLength As Long, _
-   ByRef pdwReasonLengthConsumed As LongPtr _
-   ) As Long
+    ByVal hWebSocket As LongPtr, _
+    ByRef usStatus As Integer, _
+    ByRef pvReason As Any, _
+    ByVal dwReasonLength As Long, _
+    ByRef pdwReasonLengthConsumed As LongPtr _
+) As Long
 
 Public Declare PtrSafe Function WinHttpQueryHeaders Lib "winhttp" ( _
-  ByVal hRequest As LongPtr, _
-  ByVal dwInfoLevel As Long, _
-  ByVal pwszName As LongPtr, _
-  ByRef lpBuffer As Long, _
-  ByRef lpdwBufferLength As Long, _
-  ByRef lpdwIndex As Long _
-   ) As Long
+    ByVal hRequest As LongPtr, _
+    ByVal dwInfoLevel As Long, _
+    ByVal pwszName As LongPtr, _
+    ByRef lpBuffer As Long, _
+    ByRef lpdwBufferLength As Long, _
+    ByRef lpdwIndex As Long _
+) As Long
 

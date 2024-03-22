@@ -69,7 +69,6 @@ Public Function BytesLength(abBytes() As Byte) As Long
     BytesLength = UBound(abBytes) - LBound(abBytes) + 1
 End Function
 
-
 ''' Return byte array with VBA "Unicode" string encoded in UTF-8
 Public Function Utf8BytesFromString(strInput As String) As Byte()
     Dim nBytes As Long
@@ -84,7 +83,6 @@ Public Function Utf8BytesFromString(strInput As String) As Byte()
     nBytes = WideCharToMultiByte(CP_UTF8, 0&, StrPtr(strInput), -1, VarPtr(abBuffer(0)), nBytes - 1, 0&, 0&)
     Utf8BytesFromString = abBuffer
 End Function
-
 
 ''' Return VBA "Unicode" string from byte array encoded in UTF-8
 Public Function Utf8BytesToString(abUtf8Array() As Byte) As String

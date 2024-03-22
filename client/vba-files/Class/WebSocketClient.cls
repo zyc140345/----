@@ -170,7 +170,7 @@ Public Function ReceiveMessage() As String
         Exit Function
     End If
     
-    ' convert buffer into string (crudely, just ignore zeros)
+    ' Convert buffer into string
     ReceiveMessage = Utf8BytesToString(buffer)
 End Function
 
